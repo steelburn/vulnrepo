@@ -53,6 +53,7 @@ import { DialogSpinnerComponent } from '../dialog-spinner/dialog-spinner.compone
 import { IssueFilterService, FilterPill } from '../issue-filter.service';
 import { DialogFilterHelpComponent } from '../dialog-filter-help/dialog-filter-help.component';
 import { CryptoUtilsService } from '../crypto-utils.service';
+import { KeyVaultService } from '../key-vault.service';
 
 export interface Tags {
   name: string;
@@ -339,7 +340,8 @@ export class ReportComponent implements OnInit, OnDestroy, AfterViewInit {
     private utilsService: UtilsService,
     private currentdateService: CurrentdateService,
     private issueFilterService: IssueFilterService,
-    private cryptoUtils: CryptoUtilsService) {
+    private cryptoUtils: CryptoUtilsService,
+    private keyVault: KeyVaultService) {
     //console.log(route);
     this.subscription = this.messageService.getDecrypted().subscribe(message => {
       this.decryptedReportData = message;
@@ -426,8 +428,8 @@ export class ReportComponent implements OnInit, OnDestroy, AfterViewInit {
               console.log('Report exist: OK');
               this.report_info = data;
               this.reportdesc = data;
-              // check if pass in sessionStorage
-              const pass = this.sessionsub.getSessionStorageItem(data.report_id);
+              // check if pass in keyVault
+              const pass = this.keyVault.get(data.report_id);
               if (pass !== null) {
                 this.report_decryption_in_progress = true;
                 this.indexeddbService.decrypt(pass, data.report_id).then(returned => {
@@ -452,8 +454,8 @@ export class ReportComponent implements OnInit, OnDestroy, AfterViewInit {
                   this.report_info = re;
                   this.reportdesc = re;
                   this.api_connection_status = false;
-                  // check if pass in sessionStorage
-                  const pass = this.sessionsub.getSessionStorageItem(re.report_id);
+                  // check if pass in keyVault
+                  const pass = this.keyVault.get(re.report_id);
                   if (pass !== null) {
                     this.report_decryption_in_progress = true;
                     this.indexeddbService.decodeAES(re, pass).then(result => {
@@ -645,7 +647,7 @@ export class ReportComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   getAPIReportProfiles() {
-    const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+    const localkey = this.keyVault.getApiVault();
     if (localkey) {
       //this.msg = 'API connection please wait...';
 
@@ -744,7 +746,7 @@ export class ReportComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   discardChanges() {
-    const pass = this.sessionsub.getSessionStorageItem(this.report_info.report_id);
+    const pass = this.keyVault.get(this.report_info.report_id);
     if (pass !== null) {
       this.report_decryption_in_progress = true;
       if (this.report_source_api) {
@@ -1440,7 +1442,7 @@ Sample code here\n\
   saveReportChanges(report_id: any) {
     this.report_encryption_in_progress = true;
     this.savemsg = 'Please wait, report is encrypted...';
-    const pass = this.sessionsub.getSessionStorageItem(report_id) || '';
+    const pass = this.keyVault.get(report_id) || '';
     let useAPI = false;
 
     this.indexeddbService.getkeybyReportID(report_id).then(data => {
@@ -1781,7 +1783,7 @@ Sample code here\n\
   updateSecKey(report_id, pass) {
 
     this.savemsg = 'Please wait, report is encrypted...';
-    this.sessionsub.setSessionStorageItem(report_id, pass);
+    this.keyVault.set(report_id, pass);
 
     // update report
     this.addtochangelog('Change report security key');
@@ -2874,7 +2876,7 @@ Info       | ${sevCounts.Info}\n\n`;
     let ciphertext = "";
     const plaintext = JSON.stringify(json);
     if (encpass === 'userepokey') {
-      ciphertext = await this.cryptoUtils.encrypt(plaintext, this.sessionsub.getSessionStorageItem(report_info.report_id));
+      ciphertext = await this.cryptoUtils.encrypt(plaintext, this.keyVault.get(report_info.report_id));
     } else {
       ciphertext = await this.cryptoUtils.encrypt(plaintext, encpass);
     }

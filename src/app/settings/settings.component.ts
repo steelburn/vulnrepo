@@ -10,6 +10,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatTableDataSource } from '@angular/material/table';
 import { DialogAddreportprofileComponent } from '../dialog-addreportprofile/dialog-addreportprofile.component';
 import { SessionstorageserviceService } from "../sessionstorageservice.service"
+import { KeyVaultService } from '../key-vault.service';
 import { CurrentdateService } from '../currentdate.service';
 import { DialogAddCustomTemplateComponent } from '../dialog-add-custom-template/dialog-add-custom-template.component';
 import {OllamaServiceService} from '../ollama-service.service';
@@ -123,7 +124,8 @@ export class SettingsComponent implements OnInit {
 
   constructor(public router: Router, private indexeddbService: IndexeddbService, private apiService: ApiService,
     public dialog: MatDialog, public sessionsub: SessionstorageserviceService, private currentdateService: CurrentdateService,
-    private ollamaService: OllamaServiceService, public vectorService: ImportVectorService) { }
+    private ollamaService: OllamaServiceService, public vectorService: ImportVectorService,
+    private keyVault: KeyVaultService) { }
 
 
   ngOnInit() {
@@ -180,7 +182,7 @@ export class SettingsComponent implements OnInit {
   }
 
   getVault(): void {
-    const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+    const localkey = this.keyVault.getApiVault();
     if (localkey) {
 
       console.log('Key found');
@@ -445,7 +447,7 @@ export class SettingsComponent implements OnInit {
     });
 
 
-    this.sessionsub.setSessionStorageItem('VULNREPO-API', JSON.stringify(vaultobj));
+    this.keyVault.setApiVault(JSON.stringify(vaultobj));
 
     this.getProfiles();
     this.getTemplates();
@@ -462,7 +464,7 @@ export class SettingsComponent implements OnInit {
   }
 
   apidisconnect() {
-    this.sessionsub.removeSessionStorageItem('VULNREPO-API');
+    this.keyVault.removeApiVault();
     this.showregapi = false;
     this.foundvault(true);
     this.apiconneted = false;
@@ -523,7 +525,7 @@ export class SettingsComponent implements OnInit {
         this.foundvault(false);
         this.showregapi = false;
 
-        const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+        const localkey = this.keyVault.getApiVault();
         if (localkey) {
           this.apiconnect(localkey);
         }
@@ -555,7 +557,7 @@ export class SettingsComponent implements OnInit {
         dialogRef2.afterClosed().subscribe(resul => {
           console.log('The security key dialog was closed');
           if (resul === 'OK') {
-            const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+            const localkey = this.keyVault.getApiVault();
             if (localkey) {
               this.apiconnect(localkey);
             }
@@ -578,7 +580,7 @@ export class SettingsComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.sessionsub.setSessionStorageItem('VULNREPO-API', JSON.stringify(drem));
+        this.keyVault.setApiVault(JSON.stringify(drem));
         this.saveAPIKEY(drem, result);
         this.apiconnect(JSON.stringify(drem));
       }
@@ -644,7 +646,7 @@ export class SettingsComponent implements OnInit {
 
   removeApi(element) {
 
-    const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+    const localkey = this.keyVault.getApiVault();
     if (localkey) {
       const result = JSON.parse(localkey);
       const index = result.map(function (e) { return e.apikey; }).indexOf(element);
@@ -670,7 +672,7 @@ export class SettingsComponent implements OnInit {
 
   getAPIReportProfiles() {
 
-    const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+    const localkey = this.keyVault.getApiVault();
     if (localkey) {
       this.msg = 'API connection please wait...';
 
@@ -1017,7 +1019,7 @@ export class SettingsComponent implements OnInit {
 
   getAPITemplates() {
 
-    const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+    const localkey = this.keyVault.getApiVault();
     if (localkey) {
       this.msg = 'API connection please wait...';
 

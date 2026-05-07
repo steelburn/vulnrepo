@@ -72,8 +72,19 @@ VULNRΞPO uses **browser-native cryptography exclusively**:
 | Encryption | AES-256-GCM (authenticated encryption) |
 | Salt | 16 bytes, random per encryption |
 | IV | 12 bytes, random per encryption |
-| Storage | Browser IndexedDB (local machine only by default) |
+| Encrypted data storage | Browser IndexedDB (local machine only by default) |
+| Decryption key storage | In-memory only — never written to sessionStorage, localStorage, or any persistent medium |
 | Network | No data leaves the browser unless you configure the optional API backend |
+
+### Key lifetime and auto-lock
+
+Decryption passwords are held in a short-lived in-memory vault (`KeyVaultService`) that is cleared automatically when any of the following occur:
+
+- **Tab hidden** — the browser tab loses focus or is switched away from (`visibilitychange` event)
+- **Tab closed / page reload** — `pagehide` and `beforeunload` events
+- **Inactivity** — 15 minutes of no keyboard, mouse, or touch input
+
+After the vault is cleared, re-opening a report prompts for the password again. No key material is ever written to `sessionStorage`, `localStorage`, cookies, or any other persistent browser storage.
 
 Reports encrypted with older versions of the app (legacy CryptoJS AES format) are automatically detected and decrypted for backward compatibility.
 

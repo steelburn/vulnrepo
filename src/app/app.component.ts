@@ -5,6 +5,7 @@ import { Router, NavigationEnd } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SessionstorageserviceService } from "./sessionstorageservice.service"
+import { KeyVaultService } from './key-vault.service';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { DialogAboutComponent } from './dialog-about/dialog-about.component';
 import { DialogOllamaComponent } from './dialog-ollama/dialog-ollama.component';
@@ -57,6 +58,7 @@ export class AppComponent implements OnInit, OnDestroy {
   show_active_reports = false;
   arr_oreports: any = [];
   dialogRef: MatDialogRef<DialogAboutComponent>;
+  private keyVaultSub: Subscription;
 
   @HostListener('window:keydown.control.shift.y', ['$event'])
   GoToNewReport(event: KeyboardEvent) {
@@ -70,9 +72,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.router.navigate(['/my-reports']);
   }
 
-  constructor(public route: ActivatedRoute, private snackBar: MatSnackBar, public router: Router, public sessionsub: SessionstorageserviceService, private indexeddbService: IndexeddbService, public dialog: MatDialog) {
-    this.sessionsub.storageChange.subscribe(data => {
-      // console.log(data);
+  constructor(public route: ActivatedRoute, private snackBar: MatSnackBar, public router: Router, public sessionsub: SessionstorageserviceService, private indexeddbService: IndexeddbService, public dialog: MatDialog, private keyVault: KeyVaultService) {
+    this.keyVaultSub = this.keyVault.change$.subscribe(() => {
       this.getopenreports();
     });
 
@@ -135,7 +136,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
     } else {
 
-      this.sessionsub.removeSessionStorageItem_and_reload(report_id);
+      this.keyVault.remove(report_id);
+      window.location.reload();
 
     }
 
@@ -147,6 +149,7 @@ export class AppComponent implements OnInit, OnDestroy {
     // unsubscribe to ensure no memory leaks
     this.subscription.unsubscribe();
     this.getunsavedchang.unsubscribe();
+    if (this.keyVaultSub) this.keyVaultSub.unsubscribe();
   }
 
   goAbout(): void {
@@ -180,37 +183,36 @@ export class AppComponent implements OnInit, OnDestroy {
 
   getopenreports() {
     this.arr_oreports = [];
+    this.show_active_reports = false;
 
-    for (const [report_id, value] of Object.entries(sessionStorage)) {
+    const openIds = this.keyVault.openReportIds();
 
-      if (report_id !== 'VULNREPO-API') {
-        this.indexeddbService.checkifreportexist(report_id).then(data => {
-          if (data) {
-            this.show_active_reports = true;
-            this.arr_oreports.push({ "report_id": data.report_id, "report_name": data.report_name });
-          }
+    for (const report_id of openIds) {
+      this.indexeddbService.checkifreportexist(report_id).then(data => {
+        if (data) {
+          this.show_active_reports = true;
+          this.arr_oreports.push({ "report_id": data.report_id, "report_name": data.report_name });
+        }
 
-          const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
-          if (localkey) {
+        const localkey = this.keyVault.getApiVault();
+        if (localkey) {
 
-            const vaultobj = JSON.parse(localkey);
-            vaultobj.forEach((element) => {
+          const vaultobj = JSON.parse(localkey);
+          vaultobj.forEach((element) => {
 
-              this.indexeddbService.checkAPIreport_single(report_id, element.value, element.apikey).then(data => {
-                if (data) {
-                  this.show_active_reports = true;
-                  this.arr_oreports.push({ "report_id": data.report_id, "report_name": data.report_name, "report_source": 'api' });
-                }
-              });
-
+            this.indexeddbService.checkAPIreport_single(report_id, element.value, element.apikey).then(data => {
+              if (data) {
+                this.show_active_reports = true;
+                this.arr_oreports.push({ "report_id": data.report_id, "report_name": data.report_name, "report_source": 'api' });
+              }
             });
 
-          }
+          });
 
-        });
-      }
+        }
 
-    };
+      });
+    }
 
     this.arr_oreports = [...this.arr_oreports.reduce((map, obj) => map.set(obj.report_id, obj), new Map()).values()];
 

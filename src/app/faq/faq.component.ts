@@ -16,6 +16,7 @@ export class FaqComponent implements OnInit {
   private sectionKeywords: Record<string, string[]> = {
     'Browser-support':               ['browser', 'support', 'chrome', 'firefox', 'edge', 'safari', 'android', 'ios'],
     'How-are-reports-stored':        ['stored', 'storage', 'indexeddb', 'session', 'local', 'data', 'reports'],
+    'Key-lifetime-auto-lock':        ['key', 'lifetime', 'auto', 'lock', 'idle', 'timeout', 'memory', 'session', 'clear', 'inactivity', 'security', 'hidden', 'tab'],
     'How-to-create-PDF-report':      ['pdf', 'report', 'print', 'latex', 'create', 'export'],
     'I-forgot-my-security-key':      ['forgot', 'security', 'key', 'decrypt', 'bruteforce', 'restore', 'encrypted'],
     'Can-I-change-report-security-key': ['change', 'security', 'key', 'report'],
