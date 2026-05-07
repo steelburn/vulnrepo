@@ -10,6 +10,7 @@ import { DialogApikeyComponent } from '../dialog-apikey/dialog-apikey.component'
 import { ApiService } from '../api.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SessionstorageserviceService } from "../sessionstorageservice.service"
+import { KeyVaultService } from '../key-vault.service';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
@@ -73,7 +74,8 @@ export class MyreportsComponent implements OnInit, OnDestroy {
   }
 
   constructor(public dialog: MatDialog, private indexeddbService: IndexeddbService, private apiService: ApiService,
-    private snackBar: MatSnackBar, public sessionsub: SessionstorageserviceService, public router: Router) {
+    private snackBar: MatSnackBar, public sessionsub: SessionstorageserviceService, public router: Router,
+    private keyVault: KeyVaultService) {
 
   }
 
@@ -122,7 +124,7 @@ export class MyreportsComponent implements OnInit, OnDestroy {
 
   getAPIallreports() {
     this.apilist = [];
-    const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+    const localkey = this.keyVault.getApiVault();
 
     if (localkey) {
       this.msg = 'API connection please wait...';
@@ -192,7 +194,7 @@ export class MyreportsComponent implements OnInit, OnDestroy {
     dialogRef.afterClosed().subscribe(result => {
       console.log('The security key dialog was closed');
       if (result) {
-        this.sessionsub.setSessionStorageItem('VULNREPO-API', result);
+        this.keyVault.setApiVault(result);
         this.getAPIallreports();
       }
 
@@ -221,7 +223,7 @@ export class MyreportsComponent implements OnInit, OnDestroy {
           if (data) {
             this.getallreports();
             this.selection.clear();
-            this.sessionsub.removeSessionStorageItem(item.report_id);
+            this.keyVault.remove(item.report_id);
           }
         });
 

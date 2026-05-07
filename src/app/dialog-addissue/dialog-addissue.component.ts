@@ -13,6 +13,7 @@ import { MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { CurrentdateService } from '../currentdate.service';
 import { IndexeddbService } from '../indexeddb.service';
 import { SessionstorageserviceService } from "../sessionstorageservice.service"
+import { KeyVaultService } from '../key-vault.service';
 import { MatTableDataSource } from '@angular/material/table';
 import { SelectionModel } from '@angular/cdk/collections';
 import { MatPaginator } from '@angular/material/paginator';
@@ -123,7 +124,7 @@ export class DialogAddissueComponent implements OnInit, AfterViewInit {
     public dialogRef: MatDialogRef<DialogAddissueComponent>, private http: HttpClient,
     private currentdateService: CurrentdateService,
     private apiService: ApiService, public sessionsub: SessionstorageserviceService,
-    private indexeddbService: IndexeddbService) {
+    private indexeddbService: IndexeddbService, private keyVault: KeyVaultService) {
 
     this.filteredOptions = this.customissueform.valueChanges
       .pipe(
@@ -267,7 +268,7 @@ export class DialogAddissueComponent implements OnInit, AfterViewInit {
 
   getAPITemplates() {
 
-    const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+    const localkey = this.keyVault.getApiVault();
     if (localkey) {
       //this.msg = 'API connection please wait...';
 

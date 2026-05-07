@@ -9,6 +9,7 @@ import { DialogApikeyComponent } from '../dialog-apikey/dialog-apikey.component'
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { UntypedFormControl } from '@angular/forms';
 import { SessionstorageserviceService } from "../sessionstorageservice.service"
+import { KeyVaultService } from '../key-vault.service';
 import { UtilsService } from '../utils.service';
 import { MatTooltip } from '@angular/material/tooltip';
 import {Location} from '@angular/common';
@@ -46,8 +47,9 @@ export class NewreportComponent implements OnInit {
   profileSettingsselected: any;
   apireportprofiles = [];
   apireportprofilesList:any = [];
-  constructor(private _location: Location, private indexeddbService: IndexeddbService, private passwordService: SeckeyValidatorService, private apiService: ApiService, public dialog: MatDialog,  
-    public router: Router, public sessionsub: SessionstorageserviceService,private utilsService: UtilsService) {
+  constructor(private _location: Location, private indexeddbService: IndexeddbService, private passwordService: SeckeyValidatorService, private apiService: ApiService, public dialog: MatDialog,
+    public router: Router, public sessionsub: SessionstorageserviceService, private utilsService: UtilsService,
+    private keyVault: KeyVaultService) {
 
     // get report profiles
     this.indexeddbService.retrieveReportProfile().then(ret => {
@@ -70,7 +72,7 @@ export class NewreportComponent implements OnInit {
 
   ngOnInit() {
 
-    const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+    const localkey = this.keyVault.getApiVault();
     if (localkey) {
       this.localkeys = JSON.parse(localkey);
     }
@@ -79,7 +81,7 @@ export class NewreportComponent implements OnInit {
 
   getAllreportprofilesfromapi() {
   
-    const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+    const localkey = this.keyVault.getApiVault();
     if (localkey) {
       this.msg = 'API connection please wait...';
 
@@ -153,9 +155,9 @@ export class NewreportComponent implements OnInit {
     dialogRef.afterClosed().subscribe(result => {
       console.log('The security key dialog was closed');
       if (result) {
-        this.sessionsub.setSessionStorageItem('VULNREPO-API', result);
+        this.keyVault.setApiVault(result);
         
-        const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+        const localkey = this.keyVault.getApiVault();
         if (localkey) {
           this.localkeys = JSON.parse(localkey);
         }

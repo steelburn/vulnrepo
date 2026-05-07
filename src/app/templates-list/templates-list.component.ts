@@ -14,6 +14,7 @@ import {
 import { DialogAddCustomTemplateComponent } from '../dialog-add-custom-template/dialog-add-custom-template.component';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { SessionstorageserviceService } from "../sessionstorageservice.service"
+import { KeyVaultService } from '../key-vault.service';
 import { ApiService } from '../api.service';
 
 export interface VulnsList {
@@ -60,7 +61,8 @@ export class TemplatesListComponent implements OnInit {
   @ViewChild(MatSort) sort: MatSort;
 
   constructor(private http: HttpClient, public dialog: MatDialog, private indexeddbService: IndexeddbService,
-    private apiService: ApiService, public sessionsub: SessionstorageserviceService) {
+    private apiService: ApiService, public sessionsub: SessionstorageserviceService,
+    private keyVault: KeyVaultService) {
 
     this.getvulnlistStatus = 'Loading...';
 
@@ -103,7 +105,7 @@ export class TemplatesListComponent implements OnInit {
 
   getAPITemplates() {
 
-    const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+    const localkey = this.keyVault.getApiVault();
     if (localkey) {
       //this.msg = 'API connection please wait...';
 

@@ -4,6 +4,7 @@ import { ApiService } from '../api.service';
 import { IndexeddbService } from '../indexeddb.service';
 import { Inject } from '@angular/core';
 import { SessionstorageserviceService } from "../sessionstorageservice.service"
+import { KeyVaultService } from '../key-vault.service';
 
 interface Apisource {
   value: string;
@@ -32,7 +33,8 @@ export class DialogApiaddComponent implements OnInit {
   selectedAPIDEF = this.sour[0];
   // @ts-ignore
   constructor(@Inject(MAT_DIALOG_DATA) public data:any, public dialogRef: MatDialogRef<DialogApiaddComponent>, private apiService: ApiService,
-    private indexeddbService: IndexeddbService, public sessionsub: SessionstorageserviceService) { }
+    private indexeddbService: IndexeddbService, public sessionsub: SessionstorageserviceService,
+    private keyVault: KeyVaultService) { }
 
   ngOnInit(): void {
 
@@ -66,7 +68,7 @@ export class DialogApiaddComponent implements OnInit {
 
           const savejson = { apikey: apik, value: url.hostname, viewValue: setapiname };
 
-          this.sessionsub.setSessionStorageItem('VULNREPO-API', JSON.stringify([savejson]));
+          this.keyVault.setApiVault(JSON.stringify([savejson]));
           this.saveAPIKEY([savejson], pass);
           this.dialogRef.close('OK');
 
@@ -111,14 +113,14 @@ export class DialogApiaddComponent implements OnInit {
         if (resp.AUTH === 'OK') {
           this.apiconneted = true;
 
-          const localkey = this.sessionsub.getSessionStorageItem('VULNREPO-API');
+          const localkey = this.keyVault.getApiVault();
           let list:any = [];
           const savejson = { apikey: apik, value: url.hostname, viewValue: setapiname };
 
           if (localkey) {
             list = JSON.parse(localkey);
             list.push(savejson);
-            this.sessionsub.setSessionStorageItem('VULNREPO-API', JSON.stringify(list));
+            this.keyVault.setApiVault(JSON.stringify(list));
             this.saveAPIKEY(list, this.data);
           }
 

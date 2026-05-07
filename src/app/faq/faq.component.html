@@ -37,6 +37,7 @@
         <nav>
           <a class="faq-toc-link" [class.faq-toc-link--active]="activeSection === 'Browser-support'" routerLink="/faq" [queryParams]="{q: 'Browser-support'}">Browser support</a>
           <a class="faq-toc-link" [class.faq-toc-link--active]="activeSection === 'How-are-reports-stored'" routerLink="/faq" [queryParams]="{q: 'How-are-reports-stored'}">How are reports stored?</a>
+          <a class="faq-toc-link" [class.faq-toc-link--active]="activeSection === 'Key-lifetime-auto-lock'" routerLink="/faq" [queryParams]="{q: 'Key-lifetime-auto-lock'}">Key lifetime &amp; auto-lock</a>
           <a class="faq-toc-link" [class.faq-toc-link--active]="activeSection === 'How-to-create-PDF-report'" routerLink="/faq" [queryParams]="{q: 'How-to-create-PDF-report'}">Create PDF report</a>
           <a class="faq-toc-link" [class.faq-toc-link--active]="activeSection === 'I-forgot-my-security-key'" routerLink="/faq" [queryParams]="{q: 'I-forgot-my-security-key'}">Forgot security key</a>
           <a class="faq-toc-link" [class.faq-toc-link--active]="activeSection === 'Can-I-change-report-security-key'" routerLink="/faq" [queryParams]="{q: 'Can-I-change-report-security-key'}">Change security key</a>
@@ -88,7 +89,7 @@
               <mat-icon>link</mat-icon>
             </a>
           </div>
-          <p class="faq-item-desc">All data are stored in browser (by default on local machine, nothing is sent outside) using IndexedDB and SessionStorage.</p>
+          <p class="faq-item-desc">Encrypted reports are stored in the browser's <strong>IndexedDB</strong> (local machine only by default, nothing is sent outside). Decryption keys are held in short-lived <strong>in-memory storage only</strong> — they are never written to sessionStorage, localStorage, or any other persistent medium.</p>
           <p class="faq-item-desc">There is an option to use an external database/server to store encrypted reports — see:
             <a class="faq-link" target="_blank" href="https://github.com/kac89/vulnrepo/blob/master/API-INTEGRATION.md">API Reference</a>,
             <a class="faq-link" target="_blank" href="https://www.youtube.com/watch?v=cW_kVPtUJbU">Video Tutorial</a>.
@@ -96,7 +97,30 @@
         </div>
       </section>
 
-      <div class="faq-divider" [hidden]="!sectionVisible('How-are-reports-stored') && !sectionVisible('How-to-create-PDF-report')"></div>
+      <div class="faq-divider" [hidden]="!sectionVisible('How-are-reports-stored') && !sectionVisible('Key-lifetime-auto-lock')"></div>
+
+      <section class="faq-item" id="Key-lifetime-auto-lock" [hidden]="!sectionVisible('Key-lifetime-auto-lock')">
+        <div class="faq-item-header">
+          <div class="faq-item-title-row">
+            <mat-icon class="faq-item-icon">timer_off</mat-icon>
+            <h2 class="faq-item-title">Key lifetime &amp; auto-lock</h2>
+            <a class="faq-anchor-link" href="/faq?q=Key-lifetime-auto-lock" title="Link to this section">
+              <mat-icon>link</mat-icon>
+            </a>
+          </div>
+          <p class="faq-item-desc">Decryption passwords are held exclusively in memory and are never persisted to any browser storage. The key vault is cleared automatically when any of the following occur:</p>
+        </div>
+        <div class="faq-item-body">
+          <ul class="faq-check-list">
+            <li><mat-icon color="accent">visibility_off</mat-icon> <strong>Tab hidden</strong> — switching away from the tab triggers an immediate clear</li>
+            <li><mat-icon color="accent">close</mat-icon> <strong>Tab closed / page reload</strong> — the vault is wiped before the page unloads</li>
+            <li><mat-icon color="accent">hourglass_empty</mat-icon> <strong>15-minute inactivity</strong> — the timer resets on any keyboard, mouse, or touch input</li>
+          </ul>
+          <p class="faq-item-desc" style="margin-top:12px">After the vault clears, re-opening a report will prompt for the password again. This ensures that decryption keys are never left accessible in browser developer tools or recoverable from a disk dump.</p>
+        </div>
+      </section>
+
+      <div class="faq-divider" [hidden]="!sectionVisible('Key-lifetime-auto-lock') && !sectionVisible('How-to-create-PDF-report')"></div>
 
       <section class="faq-item" id="How-to-create-PDF-report" [hidden]="!sectionVisible('How-to-create-PDF-report')">
         <div class="faq-item-header">
