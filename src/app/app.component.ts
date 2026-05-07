@@ -3,7 +3,9 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
 import { IndexeddbService } from './indexeddb.service';
 import { Router, NavigationEnd } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, combineLatest, interval } from 'rxjs';
+import { startWith, map, switchMap } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { SessionstorageserviceService } from "./sessionstorageservice.service"
 import { KeyVaultService } from './key-vault.service';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
@@ -58,7 +60,9 @@ export class AppComponent implements OnInit, OnDestroy {
   show_active_reports = false;
   arr_oreports: any = [];
   dialogRef: MatDialogRef<DialogAboutComponent>;
+  lockSecondsRemaining: number | null = null;
   private keyVaultSub: Subscription;
+  private lockTimerSub: Subscription;
 
   @HostListener('window:keydown.control.shift.y', ['$event'])
   GoToNewReport(event: KeyboardEvent) {
@@ -76,6 +80,16 @@ export class AppComponent implements OnInit, OnDestroy {
     this.keyVaultSub = this.keyVault.change$.subscribe(() => {
       this.getopenreports();
     });
+
+    this.lockTimerSub = this.keyVault.idleResetAt$.pipe(
+      switchMap(resetAt => {
+        if (resetAt === null) return of(null);
+        return interval(1000).pipe(
+          startWith(0),
+          map(() => Math.max(0, Math.floor((resetAt - Date.now()) / 1000)))
+        );
+      })
+    ).subscribe(secs => { this.lockSecondsRemaining = secs; });
 
     this.getunsavedchang = this.indexeddbService.getchangesStatus().subscribe(value => {
       this.status_unsaved = value;
@@ -150,6 +164,13 @@ export class AppComponent implements OnInit, OnDestroy {
     this.subscription.unsubscribe();
     this.getunsavedchang.unsubscribe();
     if (this.keyVaultSub) this.keyVaultSub.unsubscribe();
+    if (this.lockTimerSub) this.lockTimerSub.unsubscribe();
+  }
+
+  formatLockTimer(secs: number): string {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
   goAbout(): void {

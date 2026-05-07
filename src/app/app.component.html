@@ -23,6 +23,15 @@
               <mat-icon class="status-icon">no_encryption</mat-icon>
             </a>
             <span>Report decrypted</span>
+            @if (lockSecondsRemaining !== null && lockSecondsRemaining > 0) {
+              <span class="lock-timer"
+                [class.lock-warning]="lockSecondsRemaining < 120"
+                [class.lock-critical]="lockSecondsRemaining < 30"
+                [title]="'Auto-lock in ' + formatLockTimer(lockSecondsRemaining)">
+                <mat-icon class="timer-icon">timer</mat-icon>
+                {{ formatLockTimer(lockSecondsRemaining) }}
+              </span>
+            }
           }
           @if (!enc_status) {
             <mat-icon class="status-icon">lock</mat-icon>

@@ -82,6 +82,8 @@ export class ReportComponent implements OnInit, OnDestroy, AfterViewInit {
   private objDiffers: Array<KeyValueDiffer<string, any>>;
   private objDiffersFiles: Array<KeyValueDiffer<string, any>>;
   private objDiffersResearcher: Array<KeyValueDiffer<string, any>>;
+  private requireKeyPromise: Promise<string | null> | null = null;
+  private vaultSub!: Subscription;
   public pieChartData: number[] = [0, 0, 0, 0, 0];
   public pieChartType = 'pie';
   public pieChartPlugins = [];
@@ -398,6 +400,25 @@ export class ReportComponent implements OnInit, OnDestroy, AfterViewInit {
       setTimeout(() => this.dataSource.sort = this.sort);
       setTimeout(() => this.dataSource.paginator = this.paginator2);
 
+    });
+
+    // When the vault is cleared (auto-lock or tab hidden) and the report has no
+    // unsaved changes, immediately flip back to the encrypted/locked state.
+    this.vaultSub = this.keyVault.change$.subscribe(changedId => {
+      const affectsThisReport = changedId === null || changedId === this.report_id;
+      if (!affectsThisReport) return;
+      if (!this.decryptedReportDataChanged) return;
+      if (this.youhaveunsavedchanges) return;
+      if (this.report_id && this.keyVault.has(this.report_id)) return;
+
+      this.decryptedReportData = null;
+      this.decryptedReportDataChanged = null;
+      this.report_decryption_in_progress = false;
+      this.removeSureYouWanttoLeave();
+      this.indexeddbService.updateEncStatus(false);
+      // Re-show the password dialog so the user can re-enter their key,
+      // same as on first page load (setTimeout avoids ExpressionChangedAfterItHasBeenCheckedError).
+      setTimeout(_ => this.openDialog(this.report_info));
     });
 
   }
@@ -745,25 +766,24 @@ export class ReportComponent implements OnInit, OnDestroy, AfterViewInit {
     this.stickyBarVisible = false;
   }
 
-  discardChanges() {
-    const pass = this.keyVault.get(this.report_info.report_id);
-    if (pass !== null) {
-      this.report_decryption_in_progress = true;
-      if (this.report_source_api) {
-        this.indexeddbService.decodeAES(this.report_info, pass).then(result => {
-          if (result) {
-            this.report_decryption_in_progress = false;
-            this.removeSureYouWanttoLeave();
-          }
-        }).catch(() => { this.report_decryption_in_progress = false; });
-      } else {
-        this.indexeddbService.decrypt(pass, this.report_info.report_id).then(returned => {
-          if (returned) {
-            this.report_decryption_in_progress = false;
-            this.removeSureYouWanttoLeave();
-          }
-        });
-      }
+  async discardChanges() {
+    const pass = await this.requireKey(this.report_info.report_id);
+    if (pass === null) return;
+    this.report_decryption_in_progress = true;
+    if (this.report_source_api) {
+      this.indexeddbService.decodeAES(this.report_info, pass).then(result => {
+        if (result) {
+          this.report_decryption_in_progress = false;
+          this.removeSureYouWanttoLeave();
+        }
+      }).catch(() => { this.report_decryption_in_progress = false; });
+    } else {
+      this.indexeddbService.decrypt(pass, this.report_info.report_id).then(returned => {
+        if (returned) {
+          this.report_decryption_in_progress = false;
+          this.removeSureYouWanttoLeave();
+        }
+      });
     }
   }
 
@@ -1052,6 +1072,46 @@ export class ReportComponent implements OnInit, OnDestroy, AfterViewInit {
       console.log('The security key dialog was closed');
     });
 
+  }
+
+  private requireKey(reportId: string): Promise<string | null> {
+    const existing = this.keyVault.get(reportId);
+    if (existing !== null) return Promise.resolve(existing);
+
+    // Deduplicate: if a re-auth dialog is already open (e.g. user clicked save
+    // multiple times before the dialog appeared), share the same promise so only
+    // one DialogPassComponent is ever shown at a time.
+    if (this.requireKeyPromise) return this.requireKeyPromise;
+
+    // Snapshot unsaved changes before the dialog triggers decodeAES → messageService,
+    // which would overwrite decryptedReportDataChanged with the old stored version.
+    const snapshot = this.decryptedReportDataChanged
+      ? JSON.parse(JSON.stringify(this.decryptedReportDataChanged))
+      : null;
+
+    this.requireKeyPromise = new Promise<string | null>(resolve => {
+      const dialogRef = this.dialog.open(DialogPassComponent, {
+        width: '90vw',
+        maxWidth: '480px',
+        disableClose: true,
+        data: this.report_info,
+        panelClass: 'dark-dialog-panel'
+      });
+
+      dialogRef.afterClosed().subscribe(result => {
+        this.requireKeyPromise = null;
+        if (result?.data) {
+          if (snapshot) {
+            this.decryptedReportDataChanged = snapshot;
+          }
+          resolve(result.data);
+        } else {
+          resolve(null);
+        }
+      });
+    });
+
+    return this.requireKeyPromise;
   }
 
   addtablescope(): void {
@@ -1439,10 +1499,15 @@ Sample code here\n\
     this.sureYouWanttoLeave();
   }
 
-  saveReportChanges(report_id: any) {
+  async saveReportChanges(report_id: any) {
     this.report_encryption_in_progress = true;
     this.savemsg = 'Please wait, report is encrypted...';
-    const pass = this.keyVault.get(report_id) || '';
+    const pass = await this.requireKey(report_id);
+    if (!pass) {
+      this.report_encryption_in_progress = false;
+      this.savemsg = '';
+      return;
+    }
     let useAPI = false;
 
     this.indexeddbService.getkeybyReportID(report_id).then(data => {
@@ -1835,6 +1900,7 @@ Sample code here\n\
   ngOnDestroy() {
     // unsubscribe to ensure no memory leaks
     this.subscription.unsubscribe();
+    if (this.vaultSub) this.vaultSub.unsubscribe();
   }
 
   addresearcher() {
@@ -2876,7 +2942,15 @@ Info       | ${sevCounts.Info}\n\n`;
     let ciphertext = "";
     const plaintext = JSON.stringify(json);
     if (encpass === 'userepokey') {
-      ciphertext = await this.cryptoUtils.encrypt(plaintext, this.keyVault.get(report_info.report_id));
+      const repoKey = await this.requireKey(report_info.report_id);
+      if (!repoKey) {
+        this.snackBar.open('Security key required to export encrypted report.', 'OK', {
+          duration: 4000,
+          panelClass: ['notify-snackbar-fail']
+        });
+        return;
+      }
+      ciphertext = await this.cryptoUtils.encrypt(plaintext, repoKey);
     } else {
       ciphertext = await this.cryptoUtils.encrypt(plaintext, encpass);
     }
